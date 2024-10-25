@@ -6,14 +6,13 @@ use biome_fs::BiomePath;
 use biome_rowan::{TextRange, TextSize};
 use biome_service::file_handlers::{AstroFileHandler, SvelteFileHandler, VueFileHandler};
 use biome_service::workspace::{
-    FeaturesBuilder, FileFeaturesResult, FormatFileParams, FormatOnTypeParams, FormatRangeParams,
-    GetFileContentParams, SupportsFeatureParams,
+    CheckFileSizeParams, FeaturesBuilder, FileFeaturesResult, FormatFileParams, FormatOnTypeParams,
+    FormatRangeParams, GetFileContentParams, SupportsFeatureParams,
 };
 use biome_service::{extension_error, WorkspaceError};
 use std::ffi::OsStr;
 use std::ops::{Add, Sub};
 use tower_lsp::lsp_types::*;
-use tracing::debug;
 
 #[tracing::instrument(level = "debug", skip(session), err)]
 pub(crate) fn format(
@@ -31,7 +30,13 @@ pub(crate) fn format(
     })?;
 
     if file_features.supports_format() {
-        debug!("Formatting...");
+        let size_limit_result = session.workspace.check_file_size(CheckFileSizeParams {
+            path: biome_path.clone(),
+        })?;
+        if size_limit_result.is_too_large() {
+            return Ok(None);
+        }
+
         let printed = session.workspace.format_file(FormatFileParams {
             path: biome_path.clone(),
         })?;
@@ -91,6 +96,12 @@ pub(crate) fn format_range(
     })?;
 
     if file_features.supports_format() {
+        let size_limit_result = session.workspace.check_file_size(CheckFileSizeParams {
+            path: biome_path.clone(),
+        })?;
+        if size_limit_result.is_too_large() {
+            return Ok(None);
+        }
         let doc = session.document(&url)?;
 
         let position_encoding = session.position_encoding();
@@ -176,6 +187,12 @@ pub(crate) fn format_on_type(
     })?;
 
     if file_features.supports_format() {
+        let size_limit_result = session.workspace.check_file_size(CheckFileSizeParams {
+            path: biome_path.clone(),
+        })?;
+        if size_limit_result.is_too_large() {
+            return Ok(None);
+        }
         let doc = session.document(&url)?;
 
         let position_encoding = session.position_encoding();

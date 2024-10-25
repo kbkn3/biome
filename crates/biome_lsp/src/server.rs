@@ -631,6 +631,7 @@ impl ServerFactory {
         workspace_method!(builder, fix_file);
         workspace_method!(builder, rename);
         workspace_method!(builder, organize_imports);
+        workspace_method!(builder, check_file_size);
 
         let (service, socket) = builder.finish();
         ServerConnection { socket, service }
